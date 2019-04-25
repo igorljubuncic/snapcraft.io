@@ -6,40 +6,54 @@ function install(language) {
   const osPickers = document.querySelectorAll(".js-os-select");
   const osWrappers = document.querySelectorAll(".js-os-wrapper");
 
+  function select(selectedOs) {
+    if (osWrappers) {
+      Array.prototype.slice.call(osWrappers).forEach(function(wrapper) {
+        wrapper.classList.add("u-hide");
+      });
+    }
+    const selectedEl = document.querySelector(".js-" + selectedOs);
+    if (selectedEl) {
+      selectedEl.classList.remove("u-hide");
+    }
+
+    if (!document.querySelector(".js-linux-manual")) {
+      const paginationBtn = document.querySelector(`#js-pagination-next`);
+      if (paginationBtn) {
+        paginationBtn.classList.remove("is-disabled");
+        paginationBtn.href = `/first-snap/${language}/${selectedOs}/package`;
+      }
+    }
+  }
+
   if (osPickers) {
+    const userAgent = window.navigator.userAgent;
+    const isMac = !!userAgent.match(/Mac/);
+    const isLinux = !!userAgent.match(/(Linux)|(X11)/);
+    const userOS = isMac ? "macos" : isLinux ? "linux" : null;
+
     Array.prototype.slice.call(osPickers).forEach(function(os) {
+      if (os.dataset.os === userOS) {
+        os.classList.add("is-selected");
+      }
+
       os.addEventListener("click", function(e) {
         const osSelect = e.target.closest(".js-os-select");
         if (!osSelect) {
           return;
         }
 
-        const selectedOs = osSelect.dataset.os;
-
         osPickers.forEach(function(picker) {
           picker.classList.remove("is-selected");
         });
         osSelect.classList.add("is-selected");
-
-        if (osWrappers) {
-          Array.prototype.slice.call(osWrappers).forEach(function(wrapper) {
-            wrapper.classList.add("u-hide");
-          });
-        }
-        const selectedEl = document.querySelector(".js-" + selectedOs);
-        if (selectedEl) {
-          selectedEl.classList.remove("u-hide");
-        }
-
-        if (!document.querySelector(".js-linux-manual")) {
-          const continueBtn = document.querySelector(".js-continue");
-          if (continueBtn) {
-            continueBtn.classList.remove("is--disabled");
-            continueBtn.href = `/first-snap/${language}/${selectedOs}/package`;
-          }
-        }
+        select(osSelect.dataset.os);
       });
     });
+
+    if (userOS) {
+      select(userOS);
+    }
   }
 
   function onChange(e) {
@@ -68,9 +82,10 @@ function install(language) {
     selected.classList.remove("u-hide");
     unselected.classList.add("u-hide");
 
-    const continueBtn = document.querySelector(".js-continue");
-    if (continueBtn) {
-      continueBtn.href = `/first-snap/${language}/${type}/package`;
+    const paginationBtn = document.querySelector(`#js-pagination-next`);
+    if (paginationBtn) {
+      paginationBtn.classList.remove("is-disabled");
+      paginationBtn.href = `/first-snap/${language}/${type}/package`;
     }
   }
 
@@ -159,10 +174,96 @@ function push() {
       continueBtn.classList.remove("is--disabled");
       continueBtn.innerHTML = "Continue";
     }
+
+    const paginationBtn = document.querySelector("#js-pagination-next");
+    if (paginationBtn) {
+      paginationBtn.href = `/${snapName}/listing?from=first-snap`;
+      paginationBtn.classList.remove("is-disabled");
+    }
+  });
+}
+
+function updateNotification(notificationEl, className, message) {
+  notificationEl.className = className;
+  notificationEl.querySelector(".p-notification__response").innerHTML = message;
+}
+
+function successNotification(notificationEl, message) {
+  updateNotification(notificationEl, "p-notification--positive", message);
+}
+
+function errorNotification(notificationEl, message) {
+  updateNotification(notificationEl, "p-notification--negative", message);
+}
+
+function validateSnapName(name) {
+  return /^[a-z0-9-]*[a-z][a-z0-9-]*$/.test(name) && !/^-|-$/.test(name);
+}
+
+function initRegisterName(formEl, notificationEl, successEl) {
+  const initialNotificationClassName = notificationEl.className;
+  const initialNotificationHtml = notificationEl.querySelector(
+    ".p-notification__response"
+  ).innerHTML;
+
+  const snapNameInput = formEl.querySelector("[name=snap-name]");
+
+  snapNameInput.addEventListener("keyup", () => {
+    const isValid = validateSnapName(snapNameInput.value);
+
+    if (!isValid) {
+      snapNameInput.parentNode.classList.add("is-error");
+      formEl.querySelector("button").disabled = true;
+    } else {
+      snapNameInput.parentNode.classList.remove("is-error");
+      formEl.querySelector("button").disabled = false;
+    }
+
+    updateNotification(
+      notificationEl,
+      initialNotificationClassName,
+      initialNotificationHtml
+    );
+  });
+
+  function showSuccess(message) {
+    successEl.classList.remove("u-hide");
+    successNotification(notificationEl, message);
+  }
+
+  function showError(message) {
+    errorNotification(notificationEl, message);
+  }
+
+  formEl.addEventListener("submit", event => {
+    event.preventDefault();
+    let formData = new FormData(formEl);
+
+    fetch("/register-snap/json", {
+      method: "POST",
+      body: formData
+    })
+      .then(response => response.json())
+      .then(json => {
+        if (json.errors) {
+          showError(json.errors[0].message);
+        } else if (json.code == "created") {
+          showSuccess(`Name "${json.snap_name}" registered successfully.`);
+        } else if (json.code == "already_owned") {
+          showSuccess(`You already own "${json.snap_name}"".`);
+        }
+      })
+      .catch(() => {
+        errorNotification(
+          notificationEl,
+          "There was some problem registering name. Please try again."
+        );
+      });
   });
 }
 
 export default {
+  initRegisterName,
   install,
   push
 };

@@ -1,5 +1,5 @@
 // From blog.ubuntu.com
-// https://github.com/canonical-websites/blog.ubuntu.com/blob/master/static/sass/_pattern_card.scss
+// https://github.com/canonical-web-and-design/blog.ubuntu.com/blob/master/static/sass/_pattern_card.scss
 
 @mixin insights-p-card {
 
@@ -44,6 +44,10 @@
     display: flex !important;
     flex-direction: column;
     padding: 0;
+
+    .p-card__header {
+      padding: $sp-medium;
+    }
 
     .p-strip--featured & {
       background-color: $white-90-percent;

@@ -110,6 +110,30 @@ def get_account_snaps():
     return flask.render_template("publisher/account-snaps.html", **context)
 
 
+@publisher_snaps.route("/snaps/metrics/json", methods=["POST"])
+@login_required
+def get_account_snaps_metrics():
+    if not flask.request.data:
+        error = {"error": "Please provide a list of snap ID's"}
+        return flask.jsonify(error), 500
+
+    try:
+        metrics = {"buckets": [], "snaps": []}
+
+        snaps = loads(flask.request.data)
+        metrics_query = metrics_helper.build_snap_installs_metrics_query(snaps)
+
+        if metrics_query:
+            snap_metrics = api.get_publisher_metrics(
+                flask.session, json=metrics_query
+            )
+            metrics = metrics_helper.transform_metrics(metrics, snap_metrics)
+        return flask.jsonify(metrics), 200
+    except Exception:
+        error = {"error": "An error occured while fetching metrics"}
+        return flask.jsonify(error), 500
+
+
 @publisher_snaps.route("/account/snaps/<snap_name>/measure")
 @publisher_snaps.route("/account/snaps/<snap_name>/metrics")
 @login_required
@@ -804,6 +828,40 @@ def post_register_name():
     )
 
     return flask.redirect(flask.url_for("account.get_account"))
+
+
+@publisher_snaps.route("/register-snap/json", methods=["POST"])
+@login_required
+def post_register_name_json():
+    snap_name = flask.request.form.get("snap-name")
+
+    if not snap_name:
+        return (
+            flask.jsonify({"errors": [{"message": "Snap name is required"}]}),
+            400,
+        )
+
+    try:
+        response = api.post_register_name(
+            session=flask.session, snap_name=snap_name
+        )
+    except ApiResponseErrorList as api_response_error_list:
+        for error in api_response_error_list.errors:
+            # if snap name is already owned treat it as success
+            if error["code"] == "already_owned":
+                return flask.jsonify(
+                    {"code": error["code"], "snap_name": snap_name}
+                )
+        return (
+            flask.jsonify({"errors": api_response_error_list.errors}),
+            api_response_error_list.status_code,
+        )
+    except ApiError as api_error:
+        return _handle_errors(api_error)
+
+    response["code"] = "created"
+
+    return flask.jsonify(response)
 
 
 @publisher_snaps.route("/register-name-dispute")

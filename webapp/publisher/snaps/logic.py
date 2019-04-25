@@ -25,6 +25,13 @@ def get_snaps_account_info(account_info):
 
     now = datetime.datetime.utcnow()
 
+    for snap in user_snaps:
+        snap_info = user_snaps[snap]
+        for revision in snap_info["latest_revisions"]:
+            if len(revision["channels"]) > 0:
+                snap_info["latest_release"] = revision
+                break
+
     if len(user_snaps) == 1:
         for snap in user_snaps:
             snap_info = user_snaps[snap]
@@ -163,23 +170,18 @@ def build_changed_images(
     info = []
     images_files = []
     images_json = None
+
+    # Get screenshots info (existing and new) while keeping the order recieved
     for changed_screenshot in changed_screenshots:
         for current_screenshot in current_screenshots:
             if (
-                changed_screenshot["url"] == current_screenshot["url"]
+                changed_screenshot
+                and changed_screenshot["url"] == current_screenshot["url"]
                 and current_screenshot not in info
             ):
                 info.append(current_screenshot)
                 break
-
-    # Add new icon
-    if icon is not None:
-        info.append(build_image_info(icon, "icon"))
-        images_files.append(icon)
-
-    # Add new screenshots
-    for new_screenshot in new_screenshots:
-        for changed_screenshot in changed_screenshots:
+        for new_screenshot in new_screenshots:
             is_same = (
                 changed_screenshot["status"] == "new"
                 and changed_screenshot["name"] == new_screenshot.filename
@@ -190,6 +192,12 @@ def build_changed_images(
                 if image_built not in info:
                     info.append(image_built)
                     images_files.append(new_screenshot)
+                    break
+
+    # Add new icon
+    if icon is not None:
+        info.append(build_image_info(icon, "icon"))
+        images_files.append(icon)
 
     images_json = {"info": dumps(info)}
 

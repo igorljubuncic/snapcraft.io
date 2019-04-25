@@ -5,6 +5,7 @@ import { initLicenses, license } from "./market/license";
 import { categories } from "./market/categories";
 import { storageCommands } from "./market/storageCommands";
 import { initMedia } from "./market/initMedia";
+import { initIcon } from "./market/initIcon";
 
 // https://gist.github.com/dperini/729294
 // Luke 07-06-2018 made the protocol optional
@@ -18,63 +19,6 @@ const IS_CHROMIUM =
   window.chrome !== null &&
   typeof window.chrome !== "undefined" &&
   window.navigator.userAgent.indexOf("Edge") === -1; // Edge pretends to have window.chrome
-
-function initSnapIconEdit(
-  changeIcon,
-  removeIcon,
-  iconId,
-  iconInputId,
-  state,
-  updateFormState
-) {
-  const snapIconEl = document.getElementById(iconId);
-  const snapIconInput = document.getElementById(iconInputId);
-  const changeIconEl = document.querySelector(changeIcon);
-  const removeIconEl = document.querySelector(removeIcon);
-
-  snapIconInput.addEventListener("change", function() {
-    const iconFile = this.files[0];
-    snapIconEl.src = URL.createObjectURL(iconFile);
-
-    // remove existing icon from state object
-    const images = state.images.filter(image => image.type !== "icon");
-    // replace it with a new one
-    images.unshift({
-      url: URL.createObjectURL(iconFile),
-      file: iconFile,
-      name: iconFile.name,
-      status: "new",
-      type: "icon"
-    });
-
-    updateState(state, { images });
-    snapIconEl.classList.remove("u-hide");
-    removeIconEl.classList.remove("u-hide");
-  });
-
-  changeIconEl.addEventListener("click", function(e) {
-    e.preventDefault();
-    snapIconInput.click();
-  });
-
-  removeIconEl.addEventListener("click", function(e) {
-    e.preventDefault();
-    snapIconEl.src = "";
-    snapIconEl.alt = "";
-
-    const images = state.images.filter(image => image.type !== "icon");
-
-    snapIconInput.value = "";
-    updateState(state, { images });
-    updateFormState();
-    snapIconEl.classList.add("u-hide");
-    removeIconEl.classList.add("u-hide");
-  });
-
-  if (state.images.filter(image => image.type === "icon").length > 0) {
-    removeIconEl.classList.remove("u-hide");
-  }
-}
 
 function initFormNotification(formElId, notificationElId) {
   var form = document.getElementById(formElId);
@@ -146,13 +90,6 @@ function initForm(config, initialState, errors) {
 
   let state = JSON.parse(JSON.stringify(initialState));
 
-  const stateInput = document.createElement("input");
-  stateInput.type = "hidden";
-  stateInput.name = "state";
-  stateInput.value = "";
-
-  formEl.appendChild(stateInput);
-
   const diffInput = document.createElement("input");
   diffInput.type = "hidden";
   diffInput.name = "changes";
@@ -160,15 +97,23 @@ function initForm(config, initialState, errors) {
 
   formEl.appendChild(diffInput);
 
-  if (config.snapIconRemove && config.snapIcon && config.snapIconInput) {
-    initSnapIconEdit(
-      config.snapIconChange,
-      config.snapIconRemove,
-      config.snapIcon,
-      config.snapIconInput,
-      state,
-      updateFormState
-    );
+  if (config.snapIconHolder) {
+    const icons = state.images.filter(image => image.type === "icon");
+    initIcon(config.snapIconHolder, icons[0], state.title, newIcon => {
+      let noneIcons = state.images.filter(image => image.type !== "icon");
+
+      if (newIcon) {
+        noneIcons = noneIcons.concat([newIcon]);
+      }
+
+      const newState = {
+        ...state,
+        images: noneIcons
+      };
+
+      updateState(state, newState);
+      updateFormState();
+    });
   }
 
   initFormNotification(config.form, config.formNotification);
@@ -238,6 +183,7 @@ function initForm(config, initialState, errors) {
       }
     } else {
       disableRevert();
+      disableSubmit();
     }
   }
 
@@ -315,16 +261,6 @@ function initForm(config, initialState, errors) {
 
     // if anything was changed, update state inputs and submit
     if (diff) {
-      // TODO: temporary soluton - save clean state in state input,
-      // so save still works until backend is update to understand diff
-      const cleanState = JSON.parse(JSON.stringify(state));
-      if (cleanState.images) {
-        cleanState.images = cleanState.images.filter(
-          image => image.status !== "delete"
-        );
-      }
-
-      stateInput.value = JSON.stringify(cleanState);
       diffInput.value = JSON.stringify(diff);
 
       // make sure we don't warn user about leaving the page when submitting
@@ -502,4 +438,4 @@ function initForm(config, initialState, errors) {
   updateLocalStorage();
 }
 
-export { initSnapIconEdit, initForm };
+export { initForm };

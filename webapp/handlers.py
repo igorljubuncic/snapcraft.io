@@ -1,10 +1,11 @@
-import flask
 import socket
+from urllib.parse import unquote, urlparse, urlunparse
+
+import flask
+
 import prometheus_client
 import webapp.template_utils as template_utils
-from urllib.parse import unquote, urlparse, urlunparse
 from webapp import authentication
-
 
 badge_counter = prometheus_client.Counter(
     "badge_counter", "A counter of badges requests"
@@ -32,18 +33,25 @@ def set_handlers(app):
 
         page_slug = template_utils.generate_slug(flask.request.path)
 
+        is_brand_store = False
+
+        if "STORE_QUERY" in app.config["WEBAPP_CONFIG"]:
+            is_brand_store = True
+
         return {
             # Variables
             "LOGIN_URL": app.config["LOGIN_URL"],
             "SENTRY_PUBLIC_DSN": app.config["SENTRY_PUBLIC_DSN"],
             "COMMIT_ID": app.config["COMMIT_ID"],
             "ENVIRONMENT": app.config["ENVIRONMENT"],
+            "host_url": flask.request.host_url,
             "path": flask.request.path,
             "page_slug": page_slug,
             "user_name": user_name,
             "VERIFIED_PUBLISHER": "verified",
             "webapp_config": app.config["WEBAPP_CONFIG"],
             "BSI_URL": app.config["BSI_URL"],
+            "IS_BRAND_STORE": is_brand_store,
             # Functions
             "contains": template_utils.contains,
             "join": template_utils.join,
@@ -71,6 +79,9 @@ def set_handlers(app):
     def internal_error(error):
         error_name = getattr(error, "name", type(error).__name__)
         return_code = getattr(error, "code", 500)
+
+        if not app.testing:
+            app.extensions["sentry"].captureException()
 
         return (
             flask.render_template("50X.html", error_name=error_name),

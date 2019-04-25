@@ -35,6 +35,7 @@
         <button arial-label="Close notification" class="p-icon--close js-notification-close">Close</button>
       </div>
     {% endif %}
+
     <div class="col-12">
       <h2>The app store for Linux</h2>
       <p class="u-no-padding--top p-heading--four">Publish your app for Linux users &mdash;<br class="u-hide--small" /> for desktop, cloud, and Internet of Things.</p>
@@ -53,6 +54,9 @@
         <img src="https://assets.ubuntu.com/v1/aae93857-logo-mozilla--snapcraft-homepage.svg" alt="Mozilla" />
       </span>
       <span class="p-logo-image p-fluid-grid__item--small u-align--center">
+        <a href="/publisher/kde"><img src="https://assets.ubuntu.com/v1/6958a93e-kde-logo-snapcraft-homepage.svg" alt="KDE" /></a>
+      </span>
+      <span class="p-logo-image p-fluid-grid__item--small u-align--center">
         <a href="/publisher/jetbrains"><img src="https://assets.ubuntu.com/v1/55f6dae7-logo-jetbrains--snapcraft-homepage.svg" alt="JetBrains" /></a>
       </span>
       <span class="p-logo-image p-fluid-grid__item--small u-align--center">
@@ -67,6 +71,20 @@
     </div>
   </div>
 </section>
+
+<div class="row">
+  <hr />
+</div>
+
+<div class="p-strip">
+  <div class="row">
+    <div class="col-12">
+      <h3 class="p-heading--two">Learn how to snap an app <br class="u-hide--large" /> in 30 minutes</h3>
+      <p>What language or framework does your app use?</p>
+    </div>
+  </div>
+  {% include "partials/fsf_language.html" %}
+</div>
 
 <div class="row">
   <hr />
@@ -185,20 +203,6 @@
     </div>
   </div>
 </section>
-
-<div class="row">
-  <hr>
-</div>
-
-<div class="p-strip">
-  <div class="row">
-    <div class="col-12">
-      <h3 class="p-heading--two">Learn how to snap an app <br class="u-hide--large" /> in 20 minutes</h3>
-      <p>What language or framework does your app use?</p>
-    </div>
-  </div>
-  {% include "partials/fsf_language.html" %}
-</div>
 
 {% endblock %}
 
